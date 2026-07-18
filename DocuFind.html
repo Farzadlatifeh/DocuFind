@@ -535,6 +535,36 @@
         .header-footer-block strong {
             color: #cbd5e1;
         }
+
+        .drawing-block {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px dashed #334155;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Consolas, monospace;
+            direction: ltr;
+            text-align: left;
+            line-height: 1.4;
+        }
+
+        .drawing-block strong {
+            color: #cbd5e1;
+            font-family: 'Vazirmatn', 'Inter', system-ui, sans-serif;
+        }
+
+        .drawing-block span[dir="rtl"] {
+            direction: rtl;
+            unicode-bidi: embed;
+            display: inline-block;
+            min-width: 0;
+        }
+
+        .drawing-block pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 
@@ -1002,16 +1032,31 @@
             }
 
             // ---------- tree renderer ----------
-            function renderNode(node, prefix, isLast) {
+            function renderNode(node, prefix, isLast, isRtl = false) {
+                // Detect if text contains RTL characters (Persian/Arabic)
+                const rtlPattern = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+                const textIsRtl = rtlPattern.test(node.text);
+                
+                // Use appropriate connector based on text direction
                 const connector = isLast ? '└── ' : '├── ';
-                let output = prefix + connector + node.text + '\n';
+                
+                // For RTL text, we need to ensure proper display
+                // The tree structure stays LTR but text content respects its own direction
+                let output = prefix + connector;
+                
+                // Wrap RTL text in a span with proper direction
+                if (textIsRtl) {
+                    output += '<span dir="rtl" style="display:inline-block;unicode-bidi:embed;">' + node.text + '</span>' + '\n';
+                } else {
+                    output += node.text + '\n';
+                }
 
                 const childPrefix = prefix + (isLast ? '    ' : '│   ');
 
                 for (let i = 0; i < node.children.length; i++) {
                     const child = node.children[i];
                     const childIsLast = i === node.children.length - 1;
-                    output += renderNode(child, childPrefix, childIsLast);
+                    output += renderNode(child, childPrefix, childIsLast, textIsRtl);
                 }
                 return output;
             }
@@ -1095,7 +1140,9 @@
                             combinedHtml += `<div class="header-footer-block"><strong>📄 Headers & Footers:</strong><br>${hfText.replace(/\n/g, '<br>')}</div>`;
                         }
                         if (drawingText) {
-                            combinedHtml += `<div class="drawing-block"><strong>✏️ Shapes / SmartArt:</strong><br>${drawingText.replace(/\n/g, '<br>')}</div>`;
+                            // Drawing text is already formatted with <span dir="rtl"> for RTL content
+                            // and plain text for LTR - just preserve newlines as <br>
+                            combinedHtml += `<div class="drawing-block"><strong>✏️ Shapes / SmartArt:</strong><pre style="margin:0;padding:0;background:transparent;border:none;font:inherit;">${drawingText}</pre></div>`;
                         }
 
                         return { text: combinedText, html: combinedHtml };
