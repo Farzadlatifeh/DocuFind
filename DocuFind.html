@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaraDocuFind – Office Word Search Engine</title>
+    <link rel="icon" href="icon.ico" type="image/x-icon">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="tailwind.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Vazirmatn', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        float: 'float 6s ease-in-out infinite',
+                        glow: 'glow 2s ease-in-out infinite alternate',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'fade-in': 'fadeIn 0.4s ease-out',
+                        shimmer: 'shimmer 2s linear infinite',
+                    },
+                    keyframes: {
+                        float: { '0%, 100%': { transform: 'translateY(0px)' }, '50%': { transform: 'translateY(-20px)' } },
+                        glow: { '0%': { boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)' }, '100%': { boxShadow: '0 0 40px rgba(139, 92, 246, 0.6)' } },
+                        slideUp: { '0%': { transform: 'translateY(30px)', opacity: '0' }, '100%': { transform: 'translateY(0)', opacity: '1' } },
+                        fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                        shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
+                    },
+                },
+            },
+        }
+    </script>
+
+    <!-- JSZip for reading header/footer XML -->
+    <script src="jszip.min.js"></script>
+
+    <!-- Mammoth.js for body text and styled HTML -->
+    <script src="mammoth.browser.min.js"></script>
+
+    <!-- add xlsx support -->
+    <script src="xlsx.full.min.js"></script>
+
+    <!-- add pdf support -->
+    <script type="importmap">
+        {
+        "imports": {
+            "pdfjs-dist/": "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/"
+        }
+        }
+    </script>
+
+    <script type="module">
+        import * as pdfjsLib from 'pdfjs-dist/build/pdf.mjs';
+
+        // Worker path – must point to the worker .mjs file
+        pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.mjs';
+
+        // Make pdfjsLib globally accessible if other non‑module scripts need it
+        window.pdfjsLib = pdfjsLib;
+    </script>
+
+
+    <style>
+        :root {
+            --bg-primary: #0b0f1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a1f2e;
+            --border-subtle: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+        }
+
+        /* inter-300 - latin */
+        @font-face {
+            font-display: swap;
+            /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 300;
+            src: url('fonts/inter-v20-latin-300.woff2') format('woff2');
+            /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+        }
+
+        /* inter-regular - latin */
+        @font-face {
+            font-display: swap;
+            /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 400;
+            src: url('fonts/inter-v20-latin-regular.woff2') format('woff2');
+            /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+        }
+
+        /* inter-500 - latin */
+        @font-face {
+            font-display: swap;
+            /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 500;
+            src: url('fonts/inter-v20-latin-500.woff2') format('woff2');
+            /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+        }
+
+        /* inter-600 - latin */
+        @font-face {
+            font-display: swap;
+            /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 600;
+            src: url('fonts/inter-v20-latin-600.woff2') format('woff2');
+            /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+        }
+
+        /* inter-700 - latin */
+        @font-face {
+            font-display: swap;
+            /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 700;
+            src: url('fonts/inter-v20-latin-700.woff2') format('woff2');
+            /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+        }
+
+        /* inter-800 - latin */
+        @font-face {
+            font-display: swap;
+            /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 800;
+            src: url('fonts/inter-v20-latin-800.woff2') format('woff2');
+            /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+        }
+
+        /* inter-900 - latin */
+        @font-face {
+            font-display: swap;
+            /* Check https://developer.mozilla.org/en-US/docs/Web/CSS/@font-face/font-display for other options. */
+            font-family: 'Inter';
+            font-style: normal;
+            font-weight: 900;
+            src: url('fonts/inter-v20-latin-900.woff2') format('woff2');
+            /* Chrome 36+, Opera 23+, Firefox 39+, Safari 12+, iOS 10+ */
+        }
+
+        /* Generated by script */
+        @font-face {
+            font-family: Vazirmatn;
+            src: url('fonts/webfonts/Vazirmatn-Thin.woff2') format('woff2');
+            font-weight: 100;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: Vazirmatn;
+            src: url('fonts/webfonts/Vazirmatn-ExtraLight.woff2') format('woff2');
+            font-weight: 200;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: Vazirmatn;
+            src: url('fonts/webfonts/Vazirmatn-Light.woff2') format('woff2');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: Vazirmatn;
+            src: url('fonts/webfonts/Vazirmatn-Regular.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: Vazirmatn;
+            src: url('fonts/webfonts/Vazirmatn-Medium.woff2') format('woff2');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: Vazirmatn;
+            src: url('fonts/webfonts/Vazirmatn-SemiBold.woff2') format('woff2');
+            font-weight: 600;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: Vazirmatn;
+            src: url('fonts/webfonts/Vazirmatn-Bold.woff2') format('woff2');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: Vazirmatn;
+            src: url('fonts/webfonts/Vazirmatn-ExtraBold.woff2') format('woff2');
+            font-weight: 800;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: Vazirmatn;
+            src: url('fonts/webfonts/Vazirmatn-Black.woff2') format('woff2');
+            font-weight: 900;
+            font-style: normal;
+            font-display: swap;
+        }
+
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #334155 transparent;
+        }
+
+        *::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        *::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+
+        *::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        body {
+            background: var(--bg-primary);
+            font-family: 'Vazirmatn', 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .bg-mesh {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background: radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 60%, rgba(139, 92, 246, 0.05) 0%, transparent 60%),
+                radial-gradient(ellipse at 50% 80%, rgba(59, 130, 246, 0.04) 0%, transparent 50%);
+        }
+
+        .content-layer {
+            position: relative;
+            z-index: 1;
+        }
+
+        .glass-card {
+            background: rgba(26, 31, 46, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.14);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .glow-border {
+            position: relative;
+        }
+
+        .glow-border::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6, #3b82f6, #6366f1);
+            background-size: 300% 300%;
+            animation: shimmer 3s linear infinite;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .file-icon-docx {
+            background: linear-gradient(135deg, #295ec7, #1a3f8a);
+            color: #fff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.7rem;
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(41, 94, 199, 0.3);
+        }
+
+        .file-icon-doc {
+            background: linear-gradient(135deg, #4a6fa5, #2c4a7c);
+            color: #fff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.65rem;
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(74, 111, 165, 0.3);
+        }
+
+        .file-icon-pdf {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: #fff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.65rem;
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        }
+
+        .file-icon-xlsx {
+            background: linear-gradient(135deg, #27ae60, #1e8449);
+            color: #fff;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.65rem;
+            width: 44px;
+            height: 44px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        }
+
+        .highlight-match {
+            background: rgba(250, 204, 21, 0.35);
+            border-radius: 2px;
+            padding: 0 2px;
+            color: #fef08a;
+            font-weight: 500;
+        }
+
+        .category-chip {
+            cursor: pointer;
+            transition: all 0.25s ease;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .category-chip.active {
+            transform: scale(1.04);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .drop-zone {
+            transition: all 0.3s ease;
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+        }
+
+        .drop-zone.drag-over {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.08);
+            box-shadow: 0 0 50px rgba(99, 102, 241, 0.2);
+            transform: scale(1.01);
+        }
+
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #3b82f6);
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+            transition: width 0.3s ease;
+            height: 100%;
+            border-radius: 9999px;
+        }
+
+        .file-list-scroll {
+            max-height: calc(100vh - 420px);
+            overflow-y: auto;
+            border-radius: 1rem;
+        }
+
+        [dir="auto"] {
+            text-align: start;
+        }
+
+        /* Document Preview Styling */
+        .document-content {
+            font-family: 'Vazirmatn', 'Inter', 'Calibri', 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
+            font-size: 1rem;
+            line-height: 1.65;
+            color: #e2e8f0;
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.3);
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
+        .document-content h1,
+        .document-content h2,
+        .document-content h3,
+        .document-content h4,
+        .document-content h5,
+        .document-content h6 {
+            color: #f1f5f9;
+            font-weight: 600;
+            margin-top: 1.2em;
+            margin-bottom: 0.5em;
+        }
+
+        .document-content h1 {
+            font-size: 1.8rem;
+        }
+
+        .document-content h2 {
+            font-size: 1.5rem;
+        }
+
+        .document-content h3 {
+            font-size: 1.25rem;
+        }
+
+        .document-content p {
+            margin-bottom: 0.8em;
+        }
+
+        .document-content ul,
+        .document-content ol {
+            margin-left: 1.5em;
+            margin-bottom: 0.8em;
+        }
+
+        .document-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .document-content th,
+        .document-content td {
+            border: 1px solid #334155;
+            padding: 0.5em 0.8em;
+            text-align: left;
+        }
+
+        .document-content th {
+            background: #1e293b;
+            font-weight: 600;
+        }
+
+        .document-content strong,
+        .document-content b {
+            color: #f8fafc;
+            font-weight: 700;
+        }
+
+        .document-content em,
+        .document-content i {
+            font-style: italic;
+            color: #cbd5e1;
+        }
+
+        .document-content a {
+            color: #818cf8;
+            text-decoration: underline;
+        }
+
+        .document-content[dir="rtl"] {
+            direction: rtl;
+            text-align: right;
+        }
+
+        .document-content[dir="rtl"] ul,
+        .document-content[dir="rtl"] ol {
+            margin-right: 1.5em;
+            margin-left: 0;
+        }
+
+        .header-footer-block {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px dashed #334155;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+        }
+
+        .header-footer-block strong {
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+
+<body class="bg-[#0b0f1a] text-slate-100">
+    <div class="bg-mesh"></div>
+    <div class="content-layer min-h-screen flex flex-col">
+        <header class="pt-8 pb-4 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-6xl mx-auto flex items-center gap-4 mb-2">
+                <!-- Logo -->
+                <div
+                    class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 animate-glow">
+                    <svg viewBox="0 0 128 148" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M16.012-.114h2.427l2.604.016 2.678.005c2.822.005 5.644.018 8.467.03l5.74.014Q44.963-.032 52 0l-2.875 3.375-1.617 1.898c-3.23 3.7-3.23 3.7-6.226 3.998l-3.427.038-3.74.076q-3.91.052-7.82.094l-3.752.08-3.437.04C15.65 10.045 13.75 10.881 11 13c-1.338 4.015-1.156 7.886-1.161 12.074l-.015 2.814q-.021 4.614-.027 9.23l-.017 6.407q-.015 6.722-.02 13.442a4496 4496 0 0 1-.058 17.227c-.019 4.413-.024 8.826-.026 13.239a1332 1332 0 0 1-.024 6.351 1117 1117 0 0 0-.008 8.883l-.028 2.652c.032 4.677.239 7.943 3.384 11.681 2.736.912 4.461 1.147 7.288 1.205l2.608.06 2.803.051 2.88.063q4.554.097 9.109.183l6.173.131q7.57.16 15.139.307l-.048-2.4a1618 1618 0 0 1-.14-10.788l-.076-3.775-.029-3.642-.048-3.349C59.046 91.584 59.921 89.771 62 87c3.587-2.391 5.164-2.234 9.418-2.195l3.799.02 3.97.05q2.004.016 4.006.027 4.904.036 9.807.098V75c4.275 2.137 7.191 4.139 10 8 .938 3.25.938 3.25 0 7-6.14 8.053-13.941 15.097-21.105 22.235q-2.785 2.78-5.561 5.568l-3.549 3.545-1.673 1.679c-3.92 3.895-5.634 5.093-11.11 5.134l-3.155.03-3.425.012-3.513.017q-3.687.014-7.374.02c-3.756.01-7.51.04-11.265.072q-3.58.01-7.16.016l-3.4.038c-6.457-.019-11.362-.312-16.355-4.866-3.11-3.994-4.476-6.742-4.495-11.769l-.018-2.638-.003-2.885-.015-3.046q-.021-4.997-.027-9.994l-.017-6.94Q-.235 78.95-.24 71.67c-.006-6.218-.03-12.435-.058-18.653-.019-4.78-.024-9.558-.026-14.338q-.004-3.438-.024-6.876c-.017-3.208-.015-6.415-.008-9.623l-.028-2.867c.037-5.918.727-10.4 4.884-14.958C8.387 1.33 11.104-.129 16.012-.114"
+                            fill="#f59829" />
+                        <path
+                            d="M95 4c8.1 5.707 14.176 13.051 16 23 .145 2.372.22 4.749.25 7.125l.078 3.758C111.165 42.82 109.574 47.355 108 52l1.728 1.712q3.858 3.828 7.71 7.663l2.72 2.695 2.588 2.578 2.396 2.38c3.005 3.19 3.21 5.622 3.131 10C128 81 128 81 126.438 83.437c-3.247 2.08-5.59 2.494-9.438 2.562-3.673-1.839-6.18-4.025-8.89-7.082l-2.153-2.322a289 289 0 0 1-4.367-4.875c-3.8-4.315-3.8-4.315-9.055-5.807C90.23 66.423 88.18 67.101 86 68c-9.202 2.3-18.046 1.17-26.422-3.29C50.43 58.97 45.341 51.806 42.25 41.5L42 39l-.191-1.844c-.555-9.88 2.713-19.709 9.132-27.218C62.722-1.15 80.7-4.075 95 4M58 17c-5.545 7.211-7.043 13.952-6 23 2.723 8.534 7.66 13.496 15.25 17.875C75.072 60.222 82.737 59.815 90 56c6.032-3.59 9.996-10.052 11.707-16.781.933-7.298-.052-13.282-4.187-19.414-5.073-6.292-10.462-9.554-18.457-10.742-7.93-.5-15.356 2.4-21.063 7.937"
+                            fill="#282e6c" />
+                        <path
+                            d="M85.375 18.125C89.447 21.033 92.387 24.16 94 29c.694 7.15.462 12.246-4 18-5.615 4.445-9.888 5.593-17 5-6.345-2.182-10.104-5.398-13.25-11.375C57.967 34.385 58.967 29.648 62 24c6.497-7.496 13.931-9.023 23.375-5.875"
+                            fill="#a7cbe6" />
+                    </svg>
+                </div>
+
+                <!-- Title -->
+                <div>
+                    <h1
+                        class="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-white via-indigo-200 to-purple-300 bg-clip-text text-transparent">
+                        TARA DocuFind</h1>
+                    <p class="text-slate-400 text-sm mt-0.5">Full‑text search Engine</p>
+                    <p class="text-slate-400 text-sm mt-0.5">ver. 0.04</p>
+                </div>
+
+                <!-- CHANGE FOLDER BUTTON – moved inside the flex row -->
+                <div class="ml-auto">
+                    <button id="changeFolderBtn" title="Change folder"
+                        class="w-10 h-10 rounded-xl bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 flex items-center justify-center text-slate-400 hover:text-white transition-all">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 px-4 sm:px-6 lg:px-8 pb-12">
+            <div class="max-w-6xl mx-auto">
+                <!-- Folder Selection -->
+                <div id="folderSelectionSection" class="mb-8 animate-fade-in">
+                    <div id="dropZone"
+                        class="drop-zone glass-card rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all relative overflow-hidden glow-border">
+                        <div class="relative z-10">
+                            <div
+                                class="w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center animate-float">
+                                <svg class="w-10 h-10 text-indigo-400" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+                                </svg>
+                            </div>
+                            <h3 class="text-xl sm:text-2xl font-bold text-white mb-2">Select a Folder</h3>
+                            <p class="text-slate-400 mb-6 max-w-md mx-auto text-sm sm:text-base">Choose a folder to scan
+                                for Word documents (<code
+                                    class="text-indigo-400 bg-indigo-400/10 px-1.5 py-0.5 rounded text-xs">.docx</code>
+                                & <code class="text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded text-xs">.doc</code> &
+                                <code class="text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded text-xs">.pdf</code> &
+                                <code class="text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded text-xs">.xlsx</code>)
+                            </p>
+                            <button id="selectFolderBtn"
+                                class="inline-flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition-all duration-300 text-base">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
+                                </svg>
+                                Browse Folder
+                            </button>
+                            <p class="text-slate-500 text-xs mt-4">or drag & drop a folder here</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="resultsSection" class="hidden space-y-5">
+                    <div id="statsBar" class="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-slide-up">
+                        <div class="glass-card rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-white" id="statTotalFiles">0</p>
+                            <p class="text-slate-400 text-xs uppercase mt-1">Files Found</p>
+                        </div>
+                        <div class="glass-card rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-indigo-400" id="statDocxCount">0</p>
+                            <p class="text-slate-400 text-xs uppercase mt-1">.docx Files</p>
+                        </div>
+                        <div class="glass-card rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-red-400" id="statPdfCount">0</p>
+                            <p class="text-slate-400 text-xs uppercase mt-1">.pdf Files</p>
+                        </div>
+                        <div class="glass-card rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-emerald-400" id="statXlsxCount">0</p>
+                            <p class="text-slate-400 text-xs uppercase mt-1">.xlsx Files</p>
+                        </div>
+                        <div class="glass-card rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-purple-400" id="statCategories">0</p>
+                            <p class="text-slate-400 text-xs uppercase mt-1">Categories</p>
+                        </div>
+                        <div class="glass-card rounded-xl p-4 text-center">
+                            <p class="text-3xl font-bold text-emerald-400" id="statIndexed">0</p>
+                            <p class="text-slate-400 text-xs uppercase mt-1">Content Indexed</p>
+                        </div>
+                    </div>
+
+                    <div class="glass-card rounded-2xl p-4 sm:p-5 animate-slide-up" style="animation-delay: 0.1s;">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="flex-1 relative">
+                                <svg class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none"
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                </svg>
+                                <input type="text" id="searchInput"
+                                    class="w-full pl-11 pr-4 py-3 bg-slate-800/60 border border-slate-700/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition-all text-sm"
+                                    placeholder="Search body, headers & footers...">
+                                <button id="clearSearchBtn"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-600/50 hover:bg-slate-500/50 text-slate-300 flex items-center justify-center text-xs hidden">✕</button>
+                            </div>
+                            <div class="flex gap-2 flex-shrink-0">
+                                <button id="searchModeBoth"
+                                    class="px-4 py-2.5 rounded-xl text-sm font-medium bg-indigo-600 text-white shadow-md">All</button>
+                                <button id="searchModeName"
+                                    class="px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-700/50 text-slate-300 border border-slate-600/30">Names</button>
+                                <button id="searchModeContent"
+                                    class="px-4 py-2.5 rounded-xl text-sm font-medium bg-slate-700/50 text-slate-300 border border-slate-600/30">Content</button>
+                            </div>
+                        </div>
+                        <div id="categoryChipsContainer"
+                            class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-700/40">
+                            <span class="text-xs text-slate-500 self-center mr-1">Categories:</span>
+                            <button data-category="all"
+                                class="category-chip active px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-600 text-white">All</button>
+                        </div>
+                    </div>
+
+                    <div class="file-list-scroll glass-card rounded-2xl p-4 sm:p-5 animate-slide-up"
+                        style="animation-delay: 0.2s;">
+                        <div id="fileCardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                        <div id="noResultsMessage" class="hidden text-center py-16 animate-fade-in">
+                            <div
+                                class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
+                                <svg class="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                                </svg></div>
+                            <p class="text-slate-400 font-medium">No files match your search</p>
+                            <p class="text-slate-500 text-sm mt-1">Try different keywords or clear the search</p>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-6 animate-fade-in" style="animation-delay: 0.3s;">
+                        <button id="reselectBtn"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-medium border border-slate-700/50">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+                            </svg>
+                            Choose Different Folder
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Scanning Overlay -->
+                <div id="scanningOverlay"
+                    class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div class="glass-card rounded-2xl p-8 text-center max-w-sm w-full mx-4 shadow-2xl">
+                        <div
+                            class="w-16 h-16 mx-auto mb-4 rounded-full border-4 border-indigo-500/30 border-t-indigo-500 animate-spin">
+                        </div>
+                        <p class="text-white font-semibold text-lg mb-1">Scanning Folder...</p>
+                        <p class="text-slate-400 text-sm" id="scanningStatus">Extracting text & headers/footers</p>
+                        <div class="mt-4 h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div class="progress-bar-fill" id="scanProgressBar" style="width:0%;"></div>
+                        </div>
+                        <p class="text-indigo-400 text-sm font-medium mt-2" id="scanCount">0 files found</p>
+                    </div>
+                </div>
+
+                <!-- Preview Modal -->
+                <div id="previewModal"
+                    class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop"
+                    onclick="closePreview(event)">
+                    <div class="glass-card rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up"
+                        onclick="event.stopPropagation()">
+                        <div class="flex items-center justify-between p-5 border-b border-slate-700/50 flex-shrink-0">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div id="previewIcon" class="file-icon-docx flex-shrink-0">DOCX</div>
+                                <div class="min-w-0">
+                                    <h3 id="previewTitle" class="font-semibold text-white truncate text-lg" dir="auto">
+                                    </h3><span id="previewCategory" class="text-xs text-indigo-400"></span>
+                                </div>
+                            </div>
+                            <button onclick="closePreview()"
+                                class="w-8 h-8 rounded-full bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 flex items-center justify-center">✕</button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-5">
+                            <div class="flex flex-wrap gap-3 mb-4 text-xs text-slate-400">
+                                <span>Size: <span id="previewSize" class="text-slate-300"></span></span>
+                                <span>Modified: <span id="previewModified" class="text-slate-300"></span></span>
+                                <span>Path: <span id="previewPath" class="text-slate-300 truncate"></span></span>
+                            </div>
+                            <div class="bg-slate-900/60 rounded-xl border border-slate-700/30 overflow-hidden">
+                                <p class="text-xs text-slate-500 uppercase tracking-wider px-5 pt-4 pb-2">Document
+                                    Preview (includes headers & footers)</p>
+                                <div id="previewContent" class="document-content" dir="auto"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast"
+        class="hidden fixed bottom-6 right-6 z-50 glass-card rounded-xl px-5 py-3 text-sm font-medium shadow-2xl animate-slide-up max-w-sm">
+        <span id="toastMessage"></span></div>
+
+    <script>
+        (function () {
+            // DOM references
+            const folderSelectionSection = document.getElementById('folderSelectionSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const dropZone = document.getElementById('dropZone');
+            const selectFolderBtn = document.getElementById('selectFolderBtn');
+            const searchInput = document.getElementById('searchInput');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+            const searchModeBoth = document.getElementById('searchModeBoth');
+            const searchModeName = document.getElementById('searchModeName');
+            const searchModeContent = document.getElementById('searchModeContent');
+            const categoryChipsContainer = document.getElementById('categoryChipsContainer');
+            const fileCardsContainer = document.getElementById('fileCardsContainer');
+            const noResultsMessage = document.getElementById('noResultsMessage');
+            const reselectBtn = document.getElementById('reselectBtn');
+            const scanningOverlay = document.getElementById('scanningOverlay');
+            const previewModal = document.getElementById('previewModal');
+            const statTotalFiles = document.getElementById('statTotalFiles');
+            const statDocxCount = document.getElementById('statDocxCount');
+            const statCategories = document.getElementById('statCategories');
+            const statIndexed = document.getElementById('statIndexed');
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const statPdfCount = document.getElementById('statPdfCount');
+            const statXlsxCount = document.getElementById('statXlsxCount');
+
+            let allFiles = [];
+            let activeCategory = 'all';
+            let activeSearchMode = 'both';
+            let currentSearchQuery = '';
+
+            // ---------- IndexedDB persistence for directory handle ----------
+            const DB_NAME = 'DocuFindDB';
+            const STORE_NAME = 'handles';
+            let db;
+
+            function openDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, 1);
+                    request.onupgradeneeded = () => {
+                        request.result.createObjectStore(STORE_NAME);
+                    };
+                    request.onsuccess = () => {
+                        db = request.result;
+                        resolve(db);
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async function saveDirectoryHandle(handle) {
+                if (!db) await openDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                tx.objectStore(STORE_NAME).put(handle, 'dirHandle');
+                return new Promise((resolve) => { tx.oncomplete = resolve; });
+            }
+
+            async function getStoredDirectoryHandle() {
+                if (!db) await openDB();
+                return new Promise((resolve) => {
+                    const tx = db.transaction(STORE_NAME, 'readonly');
+                    const req = tx.objectStore(STORE_NAME).get('dirHandle');
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                });
+            }
+
+            function showToast(msg, duration = 3000) {
+                toastMessage.textContent = msg; toast.classList.remove('hidden');
+                clearTimeout(toast._timeout); toast._timeout = setTimeout(() => toast.classList.add('hidden'), duration);
+            }
+
+            function formatFileSize(bytes) {
+                if (!bytes) return 'Unknown'; const units = ['B', 'KB', 'MB', 'GB']; let i = 0, size = bytes;
+                while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; } return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+            }
+            function formatDate(date) {
+                if (!date) return 'Unknown'; return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
+            function debounce(fn, delay) { let timer; return function (...args) { clearTimeout(timer); timer = setTimeout(() => fn.apply(this, args), delay); }; }
+            function getColorForCategory(name) {
+                let hash = 0; for (let i = 0; i < name.length; i++) { hash = name.charCodeAt(i) + ((hash << 5) - hash); hash = hash & hash; }
+                const hue = Math.abs(hash) % 360; return { bg: `hsla(${hue},50%,48%,0.2)`, text: `hsl(${hue},60%,68%)`, border: `hsla(${hue},50%,48%,0.4)`, dot: `hsl(${hue},65%,63%)` };
+            }
+
+            // ---------- Header/Footer text extraction using JSZip ----------
+            async function extractHeaderFooterText(arrayBuffer) {
+                let text = '';
+                try {
+                    const zip = await JSZip.loadAsync(arrayBuffer);
+                    const parser = new DOMParser();
+                    const headerFooterFiles = [];
+                    zip.forEach((relativePath, file) => {
+                        if (relativePath.match(/word\/(header|footer)\d*\.xml/i)) {
+                            headerFooterFiles.push(file);
+                        }
+                    });
+                    for (const file of headerFooterFiles) {
+                        try {
+                            const xmlText = await file.async('text');
+                            const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                            const tNodes = xmlDoc.querySelectorAll('w\\:t, t');
+                            let partText = '';
+                            tNodes.forEach(node => { partText += node.textContent || ''; });
+                            if (partText.trim()) {
+                                text += partText + '\n';
+                            }
+                        } catch (e) { console.warn('Header/footer parse error:', e); }
+                    }
+                } catch (e) {
+                    console.warn('JSZip header/footer extraction failed:', e);
+                }
+                return text.trim();
+            }
+
+            async function extractDrawingText(arrayBuffer) {
+                const JSZip = window.JSZip;
+                const zip = await JSZip.loadAsync(arrayBuffer);
+                const allTreeOutputs = [];
+
+                const diagFolder = zip.folder('word/diagrams');
+                if (!diagFolder) return '';
+
+                const files = [];
+                diagFolder.forEach((relPath, file) => {
+                    if (relPath.toLowerCase().endsWith('.xml')) files.push(file);
+                });
+
+                for (const file of files) {
+                    const xmlStr = await file.async('text');
+                    const tree = buildSmartArtTree(xmlStr);
+                    if (tree) allTreeOutputs.push(tree);
+                }
+
+                return allTreeOutputs.join('\n\n');
+            }
+
+            // --------------------------------------------------------
+            function buildSmartArtTree(xmlString) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(xmlString, 'text/xml');
+
+                const dataModels = doc.getElementsByTagNameNS('*', 'dataModel');
+                if (!dataModels.length) return null;
+
+                const dataModel = dataModels[0];
+                const pts = dataModel.getElementsByTagNameNS('*', 'pt');
+                if (!pts.length) return null;
+
+                const nodeMap = {};  // modelId -> { id, text, children[] }
+                const childParent = {}; // child modelId -> parent modelId
+
+                // 1. Collect all nodes with their text
+                for (const pt of pts) {
+                    const modelId = pt.getAttribute('modelId');
+                    if (!modelId) continue;
+
+                    // gather text from all <t> descendants
+                    const tNodes = [];
+                    (function walk(node) {
+                        if (node.nodeType === 1) {
+                            if (node.localName === 't') tNodes.push(node);
+                            for (let c = node.firstChild; c; c = c.nextSibling) walk(c);
+                        }
+                    })(pt);
+                    const text = tNodes.map(t => (t.textContent || '').trim()).filter(Boolean).join(' ');
+                    if (!text) continue;
+
+                    // also store indent level (optional, used as fallback)
+                    let level = null;
+                    const prSet = pt.getElementsByTagNameNS('*', 'prSet')[0];
+                    if (prSet) {
+                        const lvl = prSet.getAttribute('lvl');
+                        if (lvl !== null) level = parseInt(lvl, 10);
+                    }
+
+                    nodeMap[modelId] = { id: modelId, text, level, children: [] };
+                }
+
+                if (Object.keys(nodeMap).length === 0) return null;
+
+                // 2. Extract parent-of connections (type="parOf")
+                const cxnLists = dataModel.getElementsByTagNameNS('*', 'cxnLst');
+                let hasHierarchyConnections = false;
+                if (cxnLists.length) {
+                    const cxns = cxnLists[0].getElementsByTagNameNS('*', 'cxn');
+                    for (const cxn of cxns) {
+                        const type = cxn.getAttribute('type');
+                        if (type !== 'parOf') continue;   // only direct parent-child
+
+                        const srcId = cxn.getAttribute('srcId');
+                        const destId = cxn.getAttribute('destId');
+                        if (srcId && destId && nodeMap[srcId] && nodeMap[destId]) {
+                            nodeMap[srcId].children.push(nodeMap[destId]);
+                            childParent[destId] = srcId;
+                            hasHierarchyConnections = true;
+                        }
+                    }
+                }
+
+                // 3. Build tree
+                let roots = [];
+                if (hasHierarchyConnections) {
+                    // Use connection-based hierarchy
+                    roots = Object.values(nodeMap).filter(n => !(n.id in childParent));
+                } else {
+                    // Fallback: use indent levels (if any)
+                    const items = Object.values(nodeMap).map(n => ({ text: n.text, level: n.level ?? 0 }));
+                    // Rebuild from level list
+                    roots = buildFromLevels(items);
+                }
+
+                if (!roots.length) return null;
+
+                // 4. Render as ASCII tree
+                return roots.map(root => renderNode(root, '', true)).join('\n');
+            }
+
+            // ---------- fallback level-based builder ----------
+            function buildFromLevels(items) {
+                const rootNodes = [];
+                const stack = []; // nodes at each level
+
+                for (const item of items) {
+                    const node = { text: item.text, children: [] };
+
+                    while (stack.length > item.level) stack.pop();
+
+                    if (stack.length === 0) {
+                        rootNodes.push(node);
+                    } else {
+                        stack[stack.length - 1].children.push(node);
+                    }
+
+                    stack.push(node);
+                }
+                return rootNodes;
+            }
+
+            // ---------- tree renderer ----------
+            function renderNode(node, prefix, isLast) {
+                const connector = isLast ? '└── ' : '├── ';
+                let output = prefix + connector + node.text + '\n';
+
+                const childPrefix = prefix + (isLast ? '    ' : '│   ');
+
+                for (let i = 0; i < node.children.length; i++) {
+                    const child = node.children[i];
+                    const childIsLast = i === node.children.length - 1;
+                    output += renderNode(child, childPrefix, childIsLast);
+                }
+                return output;
+            }
+
+            // ---------- Heuristic: detect likely-garbled Persian/Arabic extraction ----------
+            // Legacy Persian PDF fonts (common with old "B Nazanin"/"B Zar"-style fonts exported
+            // without an embedded ToUnicode CMap) often decode to plausible-looking but wrong
+            // characters — usually OTHER characters from the same broad Arabic Unicode block, so a
+            // simple "is this Arabic-range" check can't catch it. Instead we look for characters
+            // that are valid Unicode but essentially never appear in normal Persian body text:
+            // combining harakat/diacritics, Arabic-Indic digits (Persian normally uses ۰-۹, not
+            // ٠-٩), and Urdu-only extended letters (ے ٹ ڈ ڑ ں ھ). Their presence — especially
+            // interspersed inside otherwise-Persian words — is a strong tell that pdf.js guessed
+            // the wrong glyph-to-Unicode mapping. We can't fix that after the fact, but we can flag
+            // it so the UI is honest about it instead of silently showing garbage as if correct.
+            function looksGarbledPersianText(text) {
+                if (!text) return false;
+                const sample = text.slice(0, 800);
+                const redFlagPattern = /[\u064B-\u065F\u0670\u06D6-\u06ED\u0660-\u0669\u06D2\u0679\u0688\u0691\u06BA\u06BE\u06C1\u06D5]/g;
+                const persianLetterPattern = /[\u0621-\u064A\u067E\u0686\u0698\u06AF\u06CC\u06A9]/g;
+                const redFlags = (sample.match(redFlagPattern) || []).length;
+                const persianLetters = (sample.match(persianLetterPattern) || []).length;
+                if (persianLetters < 10) return false; // not enough Persian text to judge
+                return (redFlags / persianLetters) > 0.12;
+            }
+
+            // ---------- Content extraction (body from mammoth + header/footer from JSZip) ----------
+            async function extractContent(fileObj) {
+                const ext = fileObj.extension;
+                if (ext !== 'docx' && ext !== 'pdf' && ext !== 'xlsx') return null;
+
+                try {
+                    const arrayBuffer = await fileObj.fileObj.arrayBuffer();
+
+                    // if (ext === 'docx') {
+                    //     // Existing docx extraction (unchanged)
+                    //     const [rawResult, htmlResult, hfText] = await Promise.all([
+                    //         mammoth.extractRawText({ arrayBuffer }),
+                    //         mammoth.convertToHtml({ arrayBuffer }),
+                    //         extractHeaderFooterText(arrayBuffer)
+                    //     ]);
+                    //     const bodyText = rawResult.value || '';
+                    //     const bodyHtml = htmlResult.value || '';
+                    //     const combinedText = bodyText + (hfText ? '\n\n' + hfText : '');
+                    //     let combinedHtml = bodyHtml;
+                    //     if (hfText) {
+                    //         combinedHtml += `<div class="header-footer-block"><strong>📄 Headers & Footers:</strong><br>${hfText.replace(/\n/g, '<br>')}</div>`;
+                    //     }
+                    //     return { text: combinedText, html: combinedHtml };
+                    // }
+
+                    if (ext === 'docx') {
+                        // 1. Mammoth extraction (unchanged, uses arrayBuffer)
+                        const [rawResult, htmlResult, hfText] = await Promise.all([
+                            mammoth.extractRawText({ arrayBuffer }),
+                            mammoth.convertToHtml({ arrayBuffer }),
+                            extractHeaderFooterText(arrayBuffer)   // <-- still receives arrayBuffer, as originally
+                        ]);
+
+                        const bodyText = rawResult.value || '';
+                        const bodyHtml = htmlResult.value || '';
+
+                        // 2. Extract shape / SmartArt text (new, in a safe try-catch)
+                        let drawingText = '';
+                        try {
+                            drawingText = await extractDrawingText(arrayBuffer);
+                        } catch (err) {
+                            console.warn('Could not extract drawing text:', err);
+                            drawingText = '';
+                        }
+
+                        // 3. Combine all text sources (only add if non-empty)
+                        const parts = [bodyText];
+                        if (hfText) parts.push('\n\n📄 Headers & Footers:\n' + hfText);
+                        if (drawingText) parts.push('\n\n✏️ Shapes / SmartArt:\n' + drawingText);
+                        const combinedText = parts.join('');
+
+                        // 4. Combine HTML output
+                        let combinedHtml = bodyHtml;
+                        if (hfText) {
+                            combinedHtml += `<div class="header-footer-block"><strong>📄 Headers & Footers:</strong><br>${hfText.replace(/\n/g, '<br>')}</div>`;
+                        }
+                        if (drawingText) {
+                            combinedHtml += `<div class="drawing-block"><strong>✏️ Shapes / SmartArt:</strong><br>${drawingText.replace(/\n/g, '<br>')}</div>`;
+                        }
+
+                        return { text: combinedText, html: combinedHtml };
+                    }
+
+                    if (ext === 'pdf') {
+                        // ✅ Only this line changes
+                        const pdfjsVersion = '4.0.379';
+
+                        const cMapUrl = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/cmaps/`;
+                        const standardFontDataUrl = `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/standard_fonts/`;
+
+                        const loadingTask = pdfjsLib.getDocument({
+                            data: arrayBuffer,
+                            cMapUrl,
+                            cMapPacked: true,
+                            standardFontDataUrl,
+                            // disableJbig2: true
+
+                        });
+
+                        const pdf = await loadingTask.promise;
+                        const totalPages = pdf.numPages;
+
+                        let pagesHtml = '';
+                        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                            const page = await pdf.getPage(pageNum);
+                            const viewport = page.getViewport({ scale: 2 });
+
+                            const canvas = document.createElement('canvas');
+                            const context = canvas.getContext('2d');
+                            canvas.width = viewport.width;
+                            canvas.height = viewport.height;
+
+                            await page.render({ canvasContext: context, viewport }).promise;
+
+                            const dataUrl = canvas.toDataURL('image/png');
+                            pagesHtml += `
+                            <div style="margin-bottom:16px; background:white; border-radius:8px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+                                <img src="${dataUrl}" class="pdf-page-img" draggable="false"
+                                    style="display:block; width:100%; height:auto; transition: transform 0.3s ease; cursor: zoom-in; -webkit-user-drag: none; user-select: none;"
+                                    alt="صفحه ${pageNum}" />
+                                <div style="font-family: 'Vazirmatn', 'Inter', sans-serif; direction: rtl; color: var(--text-secondary); background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 0.5rem; padding: 0.4rem 1rem; font-size: 0.875rem; display: inline-block; white-space: nowrap; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);">صفحه ${pageNum} از ${totalPages}</div>
+                            </div>
+                            `;
+                        }
+
+                        const html = `
+                            <div id="pdf-zoom-container" style="background:#e9ecef; padding:20px; border-radius:12px; direction:ltr;">
+                                ${pagesHtml}
+                            </div>
+                        `;
+
+                        return { text: '', html, garbled: false };
+                    }
+
+                    // heree
+                    if (ext === 'xlsx') {
+                        if (typeof XLSX.set_cptable === 'function' && typeof XLSX.cptable !== 'undefined') {
+                            XLSX.set_cptable(XLSX.cptable);
+                        }
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array', codepage: 1256 });
+                        let fullText = '';
+                        let html = '';
+                        const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        workbook.SheetNames.forEach(sheetName => {
+                            const sheet = workbook.Sheets[sheetName];
+                            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                            html += `<h4>📊 ${escapeHtml(sheetName)}</h4><table>`;
+                            json.forEach((row, rowIdx) => {
+                                html += '<tr>';
+                                row.forEach(cell => {
+                                    html += `<td>${escapeHtml(cell)}</td>`;
+                                    fullText += cell + ' ';
+                                });
+                                html += '</tr>';
+                                fullText += '\n';
+                            });
+                            html += '</table>';
+                            fullText += '\n';
+                        });
+                        const garbled = looksGarbledPersianText(fullText);
+                        if (garbled) {
+                            console.warn(`Possible font/encoding issue in ${fileObj.name}`);
+                            html = `<div class="header-footer-block" style="color:#fb923c;">⚠️ This spreadsheet's text may be garbled — check whether it was originally a legacy .xls file saved with an .xlsx extension.</div>` + html;
+                        }
+                        return { text: fullText, html, garbled };
+                    }
+
+                } catch (e) {
+                    console.warn(`Content extraction error for ${fileObj.name}:`, e);
+                    return null;
+                }
+            }
+
+            // ---------- Categorization (unchanged, Persian aware) ----------
+            function categorizeFiles(files) {
+                const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'from', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'shall', 'can', 'this', 'that', 'these', 'those', 'it', 'its', 'draft', 'copy', 'final', 'version', 'v1', 'v2', 'v3', 'new', 'old', 'updated', 'revised', 'edit', 'edited', 'document', 'doc', 'file', 'word', 'microsoft', 'office', 'و', 'در', 'به', 'از', 'با', 'برای', 'که', 'را', 'این', 'آن', 'تا', 'هر', 'هم', 'خود', 'شد', 'است', 'بود', 'کرد', 'نیز', 'می', 'ها', 'های', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'شش', 'هفت', 'هشت', 'نه', 'ده', 'اما', 'یا', 'اگر', 'چون', 'زیرا', 'البته', 'پس', 'بلکه', 'حتی']);
+                const fileWords = files.map(f => {
+                    const nameWithoutExt = f.name.replace(/\.(docx?|DOCX?)$/, '');
+                    const cleaned = nameWithoutExt.replace(/[_\-\s]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim();
+                    const words = cleaned.split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w.toLowerCase()));
+                    return { file: f, words, firstWord: words[0]?.toLowerCase(), firstTwoWords: words.length >= 2 ? (words[0] + ' ' + words[1]).toLowerCase() : null };
+                });
+                const firstWordFreq = {}; fileWords.forEach(fw => { if (fw.firstWord) firstWordFreq[fw.firstWord] = (firstWordFreq[fw.firstWord] || 0) + 1; });
+                const categoryMap = {}, uncategorized = [];
+                fileWords.forEach(fw => {
+                    if (fw.firstWord && firstWordFreq[fw.firstWord] >= 2) { const cat = fw.firstWord.charAt(0).toUpperCase() + fw.firstWord.slice(1); (categoryMap[cat] ??= []).push(fw.file); }
+                    else if (fw.firstTwoWords) { const existing = Object.keys(categoryMap).find(c => fw.firstTwoWords.includes(c.toLowerCase()) || c.toLowerCase().includes(fw.firstTwoWords)); existing ? categoryMap[existing].push(fw.file) : uncategorized.push(fw.file); }
+                    else uncategorized.push(fw.file);
+                });
+                const categorized = []; Object.entries(categoryMap).forEach(([cat, files]) => files.forEach(f => categorized.push({ ...f, category: cat })));
+                uncategorized.forEach(f => categorized.push({ ...f, category: 'Other' }));
+                if (categorized.filter(f => f.category === 'Other').length > categorized.length * 0.6 && categorized.length > 5) {
+                    const alpha = {}; categorized.forEach(f => { const a = f.name.replace(/\.(docx?|DOCX?)$/, '').trim().charAt(0).toUpperCase(); const key = /[A-Z\u0600-\u06FF]/.test(a) ? a : '#'; (alpha[key] ??= []).push(f); });
+                    const regrouped = []; Object.entries(alpha).forEach(([letter, fs]) => { const cat = fs.length >= 2 ? `Starts with "${letter}"` : 'Other'; fs.forEach(f => regrouped.push({ ...f, category: cat })); });
+                    return regrouped;
+                }
+                return categorized;
+            }
+
+            async function scanDirectory(dirHandle, path = '', progressCb = null) {
+                const results = []; try {
+                    for await (const entry of dirHandle.values()) {
+                        if (entry.kind === 'file') {
+                            const name = entry.name, lower = name.toLowerCase();
+                            if (lower.endsWith('.docx') || lower.endsWith('.doc') || lower.endsWith('.pdf') || lower.endsWith('.xlsx')) {
+                                try { const file = await entry.getFile(); results.push({ name, path: path || '/', handle: entry, category: null, contentText: null, contentHtml: null, size: file.size, lastModified: file.lastModified, extension: lower.endsWith('.docx') ? 'docx' : lower.endsWith('.doc') ? 'doc' : lower.endsWith('.pdf') ? 'pdf' : 'xlsx', fileObj: file }); progressCb?.(results.length); } catch (e) { }
+                            }
+                        } else if (entry.kind === 'directory') { const sub = await scanDirectory(entry, path ? `${path}/${entry.name}` : entry.name, progressCb); results.push(...sub); progressCb?.(results.length); }
+                    }
+                } catch (e) { } return results;
+            }
+
+            async function processFiles(files, onProgress) {
+                let processed = 0, indexedCount = 0; const batchSize = 5, processedFiles = [];
+                for (let i = 0; i < files.length; i += batchSize) {
+                    const batch = files.slice(i, i + batchSize);
+                    const batchResults = await Promise.all(batch.map(async f => { const content = await extractContent(f); if (content) indexedCount++; return { ...f, contentText: content?.text || null, contentHtml: content?.html || null, contentGarbled: content?.garbled || false }; }));
+                    processedFiles.push(...batchResults); processed += batch.length;
+                    onProgress?.({ processed, total: files.length, indexedCount, percent: Math.round(processed / files.length * 100) });
+                }
+                return { processedFiles, indexedCount };
+            }
+
+            // ---------- UI rendering ----------
+            function renderCategoryChips(categories) {
+                const existing = categoryChipsContainer.querySelectorAll('.dynamic-chip'); existing.forEach(c => c.remove());
+                const uniq = [...new Set(categories)].sort((a, b) => a === 'Other' ? 1 : b === 'Other' ? -1 : a.localeCompare(b));
+                uniq.forEach(cat => {
+                    const colors = getColorForCategory(cat); const chip = document.createElement('button');
+                    chip.className = 'category-chip dynamic-chip px-3 py-1.5 rounded-full text-xs font-semibold border'; chip.dataset.category = cat;
+                    chip.style.backgroundColor = colors.bg; chip.style.color = colors.text; chip.style.borderColor = colors.border; chip.textContent = cat;
+                    const count = allFiles.filter(f => f.category === cat).length; const span = document.createElement('span'); span.className = 'ml-1.5 opacity-70'; span.textContent = `(${count})`; chip.appendChild(span);
+                    chip.addEventListener('click', () => setActiveCategory(cat)); categoryChipsContainer.appendChild(chip);
+                });
+                const allChip = categoryChipsContainer.querySelector('[data-category="all"]'); if (allChip) { const s = allChip.querySelector('span'); if (s) s.remove(); const ns = document.createElement('span'); ns.className = 'ml-1.5 opacity-70'; ns.textContent = `(${allFiles.length})`; allChip.appendChild(ns); }
+            }
+
+            function setActiveCategory(cat) {
+                activeCategory = cat; categoryChipsContainer.querySelectorAll('.category-chip').forEach(chip => {
+                    chip.classList.remove('active');
+                    if (chip.dataset.category === cat) {
+                        chip.classList.add('active');
+                        if (cat === 'all') { chip.style.backgroundColor = '#4f46e5'; chip.style.color = '#fff'; chip.style.borderColor = '#6366f1'; }
+                        else { const col = getColorForCategory(cat); chip.style.backgroundColor = col.dot; chip.style.color = '#fff'; chip.style.borderColor = col.dot; }
+                    } else {
+                        const orig = chip.dataset.category;
+                        if (orig && orig !== 'all') { const col = getColorForCategory(orig); chip.style.backgroundColor = col.bg; chip.style.color = col.text; chip.style.borderColor = col.border; }
+                        else if (orig === 'all') { chip.style.backgroundColor = '#1e293b'; chip.style.color = '#94a3b8'; chip.style.borderColor = '#334155'; }
+                    }
+                }); applyFiltersAndRender();
+            }
+
+            function highlightText(text, query) { if (!query) return text; const esc = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); return text.replace(new RegExp(`(${esc})`, 'gi'), '<span class="highlight-match">$1</span>'); }
+
+            function getFilteredFiles() {
+                let filtered = allFiles; if (activeCategory !== 'all') filtered = filtered.filter(f => f.category === activeCategory);
+                const q = currentSearchQuery.trim().toLowerCase();
+                if (q) { filtered = filtered.filter(f => { const nameMatch = f.name.toLowerCase().includes(q); if (activeSearchMode === 'name') return nameMatch; const contentMatch = f.contentText && f.contentText.toLowerCase().includes(q); if (activeSearchMode === 'content') return contentMatch; return nameMatch || contentMatch; }); }
+                return filtered;
+            }
+
+            function renderFileCards() {
+                const filtered = getFilteredFiles(); fileCardsContainer.innerHTML = '';
+                if (filtered.length === 0) { noResultsMessage.classList.remove('hidden'); fileCardsContainer.classList.add('hidden'); }
+                else { noResultsMessage.classList.add('hidden'); fileCardsContainer.classList.remove('hidden'); filtered.forEach(f => fileCardsContainer.appendChild(createFileCard(f))); }
+            }
+
+            function createFileCard(file) {
+                const card = document.createElement('div'); card.className = 'glass-card rounded-xl p-4 cursor-pointer flex items-start gap-3 group transition-all hover:shadow-xl';
+                card.addEventListener('click', () => openPreview(file));
+                const icon = document.createElement('div');
+                if (file.extension === 'docx') icon.className = 'file-icon-docx';
+                else if (file.extension === 'doc') icon.className = 'file-icon-doc';
+                else if (file.extension === 'pdf') icon.className = 'file-icon-pdf';
+                else icon.className = 'file-icon-xlsx';
+                icon.textContent = file.extension.toUpperCase();
+                const info = document.createElement('div'); info.className = 'flex-1 min-w-0';
+                const nameEl = document.createElement('p'); nameEl.className = 'font-medium text-white text-sm truncate group-hover:text-indigo-300'; nameEl.setAttribute('dir', 'auto');
+                if (currentSearchQuery && activeSearchMode !== 'content') nameEl.innerHTML = highlightText(file.name, currentSearchQuery); else nameEl.textContent = file.name;
+                const meta = document.createElement('div'); meta.className = 'flex items-center gap-2 mt-1.5 flex-wrap';
+                const catBadge = document.createElement('span'); const col = getColorForCategory(file.category); catBadge.className = 'text-xs px-2 py-0.5 rounded-full font-medium'; catBadge.style.backgroundColor = col.bg; catBadge.style.color = col.text; catBadge.textContent = file.category;
+                const sizeSpan = document.createElement('span'); sizeSpan.className = 'text-xs text-slate-500'; sizeSpan.textContent = formatFileSize(file.size);
+                const indicator = document.createElement('span');
+                if (file.contentGarbled) {
+                    indicator.className = 'text-xs text-orange-500';
+                    indicator.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block"></span> ⚠️ Possibly garbled';
+                } else if (file.contentText?.trim()) {
+                    indicator.className = 'text-xs text-emerald-500';
+                    indicator.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span> Indexed';
+                } else if (file.extension === 'doc') {
+                    indicator.className = 'text-xs text-amber-500';
+                    indicator.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span> Legacy';
+                } else if (file.extension === 'pdf') {
+                    indicator.className = 'text-xs text-orange-500';
+                    indicator.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block"></span> Image PDF – No text';
+                } else {
+                    indicator.className = 'text-xs text-slate-500';
+                    indicator.textContent = 'No content';
+                }
+                const snippetEl = document.createElement('p'); snippetEl.className = 'text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed'; snippetEl.setAttribute('dir', 'auto');
+                const snippet = file.contentText ? file.contentText.substring(0, 150) : '';
+                if (snippet && currentSearchQuery && activeSearchMode !== 'name') snippetEl.innerHTML = highlightText(snippet, currentSearchQuery) + (file.contentText?.length > 150 ? '...' : '');
+                else snippetEl.textContent = snippet ? (snippet + (file.contentText?.length > 150 ? '...' : '')) : (file.extension === 'doc' ? 'Content search not available' : 'No content');
+                info.appendChild(nameEl); info.appendChild(meta); info.appendChild(snippetEl);
+                const arrow = document.createElement('div'); arrow.className = 'flex-shrink-0 w-7 h-7 rounded-full bg-slate-700/40 flex items-center justify-center opacity-0 group-hover:opacity-100 mt-1'; arrow.innerHTML = '<svg class="w-3.5 h-3.5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
+                card.appendChild(icon); card.appendChild(info); card.appendChild(arrow); return card;
+            }
+
+            function applyFiltersAndRender() { renderFileCards(); updateSearchClearBtn(); }
+            function updateSearchClearBtn() { currentSearchQuery ? clearSearchBtn.classList.remove('hidden') : clearSearchBtn.classList.add('hidden'); }
+
+            function openPreview(file) {
+                const ext = file.extension;
+                const iconEl = document.getElementById('previewIcon');
+                iconEl.className = 'file-icon-' + ext + ' flex-shrink-0';
+                iconEl.textContent = ext.toUpperCase();
+                document.getElementById('previewTitle').textContent = file.name; document.getElementById('previewTitle').setAttribute('dir', 'auto');
+                document.getElementById('previewCategory').textContent = file.category;
+                document.getElementById('previewSize').textContent = formatFileSize(file.size);
+                document.getElementById('previewModified').textContent = formatDate(file.lastModified);
+                document.getElementById('previewPath').textContent = file.path || '/';
+                const contentDiv = document.getElementById('previewContent'); contentDiv.setAttribute('dir', 'auto');
+                if (file.contentHtml) { contentDiv.innerHTML = file.contentHtml; }
+                else if (file.extension === 'doc') { contentDiv.innerHTML = '<p class="text-slate-400 italic">⚠️ Styled preview not available for legacy .doc files.</p>'; }
+                else { contentDiv.innerHTML = '<p class="text-slate-400 italic">No content could be extracted.</p>'; }
+                previewModal.classList.remove('hidden'); document.body.style.overflow = 'hidden';
+            }
+
+            function closePreview(e) { if (e && e.target !== previewModal) return; previewModal.classList.add('hidden'); document.body.style.overflow = ''; }
+            // Exposed on window: this function is invoked from inline onclick="" attributes
+            // (the modal backdrop and the ✕ button), which resolve identifiers against the
+            // global scope, not this IIFE's local scope.
+            window.closePreview = closePreview;
+
+            function updateStats(indexedCount) {
+                statTotalFiles.textContent = allFiles.length;
+                statDocxCount.textContent = allFiles.filter(f => f.extension === 'docx').length;
+                statPdfCount.textContent = allFiles.filter(f => f.extension === 'pdf').length;
+                statXlsxCount.textContent = allFiles.filter(f => f.extension === 'xlsx').length;
+                statCategories.textContent = new Set(allFiles.map(f => f.category)).size;
+                statIndexed.textContent = indexedCount || allFiles.filter(f => f.contentText?.trim()).length;
+            }
+
+            async function handleFolderSelection(dirHandle) {
+                scanningOverlay.classList.remove('hidden'); document.body.style.overflow = 'hidden';
+                try {
+                    const found = await scanDirectory(dirHandle, '', count => { scanCount.textContent = `${count} files found`; scanProgressBar.style.width = `${Math.min(count * 2, 40)}%`; });
+                    if (!found.length) { scanningOverlay.classList.add('hidden'); document.body.style.overflow = ''; showToast('No Word files found.'); return; }
+                    const categorized = categorizeFiles(found); allFiles = categorized;
+                    scanProgressBar.style.width = '55%'; scanningStatus.textContent = 'Extracting body + headers/footers...';
+
+                    // Index every supported format (docx, pdf, xlsx)
+                    const indexableFiles = allFiles.filter(f => ['docx', 'pdf', 'xlsx'].includes(f.extension));
+                    let indexedCount = 0;
+                    if (indexableFiles.length) {
+                        const { processedFiles, indexedCount: ic } = await processFiles(indexableFiles, p => {
+                            scanProgressBar.style.width = `${55 + Math.round(p.percent * 0.4)}%`; scanCount.textContent = `${p.indexedCount} indexed | ${found.length} total`;
+                        });
+                        processedFiles.forEach(pr => { const idx = allFiles.findIndex(f => f.handle === pr.handle); if (idx >= 0) allFiles[idx] = { ...allFiles[idx], contentText: pr.contentText, contentHtml: pr.contentHtml, contentGarbled: pr.contentGarbled }; });
+                        indexedCount = ic;
+                    }
+                    updateStats(indexedCount); renderCategoryChips([...new Set(allFiles.map(f => f.category))]); renderFileCards(); updateSearchClearBtn();
+                    folderSelectionSection.classList.add('hidden'); resultsSection.classList.remove('hidden'); scanningOverlay.classList.add('hidden'); document.body.style.overflow = '';
+                    currentSearchQuery = ''; searchInput.value = ''; activeCategory = 'all'; setSearchModeUI('both');
+                    showToast(`✅ ${allFiles.length} files indexed (body + headers/footers)`);
+                    await saveDirectoryHandle(dirHandle);
+                } catch (err) { console.error('handleFolderSelection failed:', err); scanningOverlay.classList.add('hidden'); document.body.style.overflow = ''; showToast('Error reading folder.'); }
+                // Inside handleFolderSelection, after rendering and hiding overlay:
+                await saveDirectoryHandle(dirHandle);
+            }
+
+            async function selectFolder() {
+                try {
+                    // Get stored handle to use as startIn
+                    const storedHandle = await getStoredDirectoryHandle();
+                    const options = { mode: 'read' };
+                    if (storedHandle) options.startIn = storedHandle;
+
+                    const dirHandle = await window.showDirectoryPicker(options);
+                    await saveDirectoryHandle(dirHandle);
+                    await handleFolderSelection(dirHandle);
+                } catch (err) {
+                    if (err.name === 'AbortError') return;
+                    showToast('⚠️ Could not access folder.', 4000);
+                }
+            }
+
+            function resetAndReselect() { allFiles = []; activeCategory = 'all'; activeSearchMode = 'both'; currentSearchQuery = ''; searchInput.value = ''; resultsSection.classList.add('hidden'); folderSelectionSection.classList.remove('hidden'); fileCardsContainer.innerHTML = ''; document.querySelectorAll('.dynamic-chip').forEach(c => c.remove()); noResultsMessage.classList.add('hidden'); fileCardsContainer.classList.remove('hidden');['statTotalFiles', 'statDocxCount', 'statCategories', 'statIndexed'].forEach(id => document.getElementById(id).textContent = '0'); const allChip = categoryChipsContainer.querySelector('[data-category="all"]'); if (allChip) { const s = allChip.querySelector('span'); if (s) s.remove(); allChip.classList.add('active'); allChip.style.backgroundColor = '#4f46e5'; allChip.style.color = '#fff'; } setSearchModeUI('both'); }
+            function setSearchModeUI(mode) { [searchModeBoth, searchModeName, searchModeContent].forEach(b => { b.classList.remove('bg-indigo-600', 'text-white', 'shadow-md'); b.classList.add('bg-slate-700/50', 'text-slate-300', 'border', 'border-slate-600/30'); }); const active = mode === 'both' ? searchModeBoth : mode === 'name' ? searchModeName : searchModeContent; active.classList.add('bg-indigo-600', 'text-white', 'shadow-md'); active.classList.remove('bg-slate-700/50', 'text-slate-300', 'border'); }
+
+            // Event binding
+            selectFolderBtn.addEventListener('click', selectFolder);
+            dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+            dropZone.addEventListener('drop', async e => { e.preventDefault(); dropZone.classList.remove('drag-over'); const item = e.dataTransfer.items[0]; if (item?.kind === 'file') { const entry = await item.getAsFileSystemHandle(); if (entry?.kind === 'directory') handleFolderSelection(entry); else showToast('Drop a folder'); } else showToast('Drop a folder'); });
+            dropZone.addEventListener('click', e => { if (e.target === dropZone || e.target.closest('#dropZone>div')) selectFolder(); });
+            searchInput.addEventListener('input', debounce(() => { currentSearchQuery = searchInput.value.trim(); applyFiltersAndRender(); }, 250));
+            searchInput.addEventListener('keydown', e => { if (e.key === 'Escape') { searchInput.value = ''; currentSearchQuery = ''; applyFiltersAndRender(); } });
+            clearSearchBtn.addEventListener('click', () => { searchInput.value = ''; currentSearchQuery = ''; applyFiltersAndRender(); searchInput.focus(); });
+            searchModeBoth.addEventListener('click', () => { activeSearchMode = 'both'; setSearchModeUI('both'); applyFiltersAndRender(); });
+            searchModeName.addEventListener('click', () => { activeSearchMode = 'name'; setSearchModeUI('name'); applyFiltersAndRender(); });
+            searchModeContent.addEventListener('click', () => { activeSearchMode = 'content'; setSearchModeUI('content'); applyFiltersAndRender(); });
+            document.querySelector('[data-category="all"]').addEventListener('click', () => setActiveCategory('all'));
+            reselectBtn.addEventListener('click', resetAndReselect);
+            document.addEventListener('keydown', e => { if (e.key === 'Escape' && !previewModal.classList.contains('hidden')) { previewModal.classList.add('hidden'); document.body.style.overflow = ''; } });
+            previewModal.addEventListener('click', function (e) { if (e.target === previewModal) { previewModal.classList.add('hidden'); document.body.style.overflow = ''; } });
+
+            document.getElementById('changeFolderBtn').addEventListener('click', async () => {
+                // Reset view
+                allFiles = [];
+                activeCategory = 'all';
+                currentSearchQuery = '';
+                if (searchInput) searchInput.value = '';
+                resultsSection.classList.add('hidden');
+                folderSelectionSection.classList.remove('hidden');
+                // Re‑select folder (picker starts in last directory)
+                await selectFolder();
+            });
+
+            if (!window.showDirectoryPicker) { folderSelectionSection.innerHTML = `<div class="glass-card rounded-2xl p-8 text-center"><p class="text-amber-400">Browser not supported. Use Chrome/Edge.</p></div>`; }
+            setSearchModeUI('both');
+        })();
+    </script>
+    <script>
+        // Double-click zoom + hand-tool (click-and-drag) panning for PDF pages inside the preview modal
+        (function () {
+            const previewModal = document.getElementById('previewModal');
+            const ZOOM_SCALE = 2;
+            let pan = null; // active drag state, or null when not dragging
+
+            // transform-origin is stored as "x% y%" on the element; read it back as fractions (0..1)
+            function getOriginFractions(img) {
+                const parts = (img.style.transformOrigin || '50% 50%').split(' ');
+                const ox = parseFloat(parts[0]) / 100;
+                const oy = parseFloat(parts[1]) / 100;
+                return {
+                    ox: Number.isFinite(ox) ? ox : 0.5,
+                    oy: Number.isFinite(oy) ? oy : 0.5
+                };
+            }
+
+            // How far (in px) the pan offset is allowed to travel before it would reveal empty
+            // space around the (unscaled) image box, given where the zoom is centered.
+            function computeBounds(img, scale) {
+                const w = img.offsetWidth;   // layout size is unaffected by transform
+                const h = img.offsetHeight;
+                const { ox, oy } = getOriginFractions(img);
+                const overflowLeft = ox * w * (scale - 1);
+                const overflowRight = (1 - ox) * w * (scale - 1);
+                const overflowTop = oy * h * (scale - 1);
+                const overflowBottom = (1 - oy) * h * (scale - 1);
+                return {
+                    minTx: -overflowRight, maxTx: overflowLeft,
+                    minTy: -overflowBottom, maxTy: overflowTop
+                };
+            }
+
+            function applyTransform(img, tx, ty, scale) {
+                // translate() listed before scale() so it operates in screen-pixel space,
+                // regardless of zoom level or transform-origin.
+                img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+                img.dataset.panX = tx;
+                img.dataset.panY = ty;
+            }
+
+            function setZoomedOut(img) {
+                img.style.transformOrigin = 'center center';
+                applyTransform(img, 0, 0, 1);
+                img.dataset.zoomed = 'false';
+                img.style.cursor = 'zoom-in';
+            }
+
+            // Double-click: toggle zoom in/out, centered on the click point
+            previewModal.addEventListener('dblclick', function (e) {
+                const img = e.target.closest('img.pdf-page-img');
+                if (!img) return;
+
+                if (img.dataset.zoomed === 'true') {
+                    setZoomedOut(img);
+                } else {
+                    const rect = img.getBoundingClientRect();
+                    const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+                    const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+                    img.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+                    applyTransform(img, 0, 0, ZOOM_SCALE);
+                    img.dataset.zoomed = 'true';
+                    img.style.cursor = 'grab';
+                }
+            });
+
+            // Hand tool: hold left click on a zoomed page and drag to pan around it
+            previewModal.addEventListener('mousedown', function (e) {
+                if (e.button !== 0) return; // left click only
+                const img = e.target.closest('img.pdf-page-img');
+                if (!img || img.dataset.zoomed !== 'true') return;
+
+                e.preventDefault(); // stop text selection / native image drag ghost
+
+                pan = {
+                    img,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    startTx: parseFloat(img.dataset.panX) || 0,
+                    startTy: parseFloat(img.dataset.panY) || 0,
+                    bounds: computeBounds(img, ZOOM_SCALE)
+                };
+                img.style.transition = 'none'; // instant tracking while dragging
+                img.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mousemove', function (e) {
+                if (!pan) return;
+                const { img, startX, startY, startTx, startTy, bounds } = pan;
+                const tx = Math.min(bounds.maxTx, Math.max(bounds.minTx, startTx + (e.clientX - startX)));
+                const ty = Math.min(bounds.maxTy, Math.max(bounds.minTy, startTy + (e.clientY - startY)));
+                applyTransform(img, tx, ty, ZOOM_SCALE);
+            });
+
+            window.addEventListener('mouseup', function () {
+                if (!pan) return;
+                pan.img.style.transition = 'transform 0.15s ease';
+                pan.img.style.cursor = 'grab';
+                pan = null;
+            });
+
+            // Belt-and-suspenders: some browsers still start a native drag despite draggable="false"
+            previewModal.addEventListener('dragstart', function (e) {
+                if (e.target.closest('img.pdf-page-img')) e.preventDefault();
+            });
+        })();
+    </script>
+</body>
+
+</html>
