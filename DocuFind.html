@@ -999,9 +999,30 @@
                     roots = Object.values(nodeMap).filter(n => !(n.id in childParent));
                 } else {
                     // Fallback: use indent levels (if any)
-                    const items = Object.values(nodeMap).map(n => ({ text: n.text, level: n.level ?? 0 }));
-                    // Rebuild from level list
-                    roots = buildFromLevels(items);
+                    // Collect nodes in document order by iterating pts again
+                    const items = [];
+                    for (const pt of pts) {
+                        const modelId = pt.getAttribute('modelId');
+                        if (modelId && nodeMap[modelId]) {
+                            const n = nodeMap[modelId];
+                            items.push({ 
+                                text: n.text, 
+                                level: n.level !== null ? n.level : 0
+                            });
+                        }
+                    }
+                    
+                    // Normalize levels: find minimum level and adjust all levels relative to it
+                    if (items.length > 0) {
+                        const minLevel = Math.min(...items.map(i => i.level));
+                        const normalizedItems = items.map(i => ({
+                            text: i.text,
+                            level: i.level - minLevel // Normalize so minimum level becomes 0
+                        }));
+                        
+                        // Rebuild from level list
+                        roots = buildFromLevels(normalizedItems);
+                    }
                 }
 
                 if (!roots.length) return null;
@@ -1013,19 +1034,26 @@
             // ---------- fallback level-based builder ----------
             function buildFromLevels(items) {
                 const rootNodes = [];
-                const stack = []; // nodes at each level
+                const stack = []; // stack[i] holds the node at level i
 
                 for (const item of items) {
                     const node = { text: item.text, children: [] };
 
-                    while (stack.length > item.level) stack.pop();
-
-                    if (stack.length === 0) {
-                        rootNodes.push(node);
-                    } else {
-                        stack[stack.length - 1].children.push(node);
+                    // Pop stack until we find the parent level
+                    while (stack.length > item.level) {
+                        stack.pop();
                     }
 
+                    if (stack.length === 0) {
+                        // This is a root node (level 0)
+                        rootNodes.push(node);
+                    } else {
+                        // Add as child of the node at level-1 (top of stack)
+                        const parent = stack[stack.length - 1];
+                        parent.children.push(node);
+                    }
+
+                    // Push this node onto the stack for its level
                     stack.push(node);
                 }
                 return rootNodes;
