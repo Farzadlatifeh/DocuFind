@@ -944,14 +944,20 @@
                 const nodeMap = {};  // modelId -> { id, text, children[] }
                 const childParent = {}; // child modelId -> parent modelId
 
-                // 1. Collect all content nodes with their text (exclude presentation-only nodes)
+                // 1. Collect all content nodes with their text (exclude non-content nodes)
                 for (const pt of pts) {
                     const modelId = pt.getAttribute('modelId');
                     if (!modelId) continue;
 
-                    // Skip presentation-only nodes (they cause duplication)
+                    // Skip non-content nodes (they cause duplication or have no text)
+                    // In SmartArt diagrams:
+                    // - type="doc": document-level placeholder (no actual content)
+                    // - type="parTrans": parent transition metadata
+                    // - type="sibTrans": sibling transition metadata  
+                    // - type="pres": presentation-only nodes (layout elements)
+                    // Only process nodes with NO type attribute (actual content nodes)
                     const ptType = pt.getAttribute('type');
-                    if (ptType === 'pres') continue;
+                    if (ptType !== null && ptType !== undefined) continue;
 
                     // gather text from all <t> descendants
                     const tNodes = [];
