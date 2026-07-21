@@ -941,8 +941,8 @@
                 const pts = dataModel.getElementsByTagNameNS('*', 'pt');
                 if (!pts.length) return null;
 
-                const nodeMap = {};  // modelId -> { id, text, children[] }
-                const childParent = {}; // child modelId -> parent modelId
+                const nodeMap = {};          // modelId -> { id, text, children[] }
+                const childParent = {};      // child modelId -> parent modelId
 
                 // 1. Collect all nodes with their text
                 for (const pt of pts) {
@@ -957,7 +957,14 @@
                             for (let c = node.firstChild; c; c = c.nextSibling) walk(c);
                         }
                     })(pt);
-                    const text = tNodes.map(t => (t.textContent || '').trim()).filter(Boolean).join(' ');
+
+                    // ----- FIX: deduplicate text pieces to avoid "root root" etc. -----
+                    const uniqueTexts = [
+                        ...new Set(
+                            tNodes.map(t => (t.textContent || '').trim()).filter(Boolean)
+                        )
+                    ];
+                    const text = uniqueTexts.join(' ');
                     if (!text) continue;
 
                     // also store indent level (optional, used as fallback)
@@ -974,9 +981,6 @@
                 if (Object.keys(nodeMap).length === 0) return null;
 
                 // 2. Extract hierarchy connections
-                // For SmartArt diagrams, hierarchy can be defined in two ways:
-                // a) Explicit type="parOf" connections (presentation layer)
-                // b) Regular connections without type attribute (content layer) - these use srcId->destId for parent->child
                 const cxnLists = dataModel.getElementsByTagNameNS('*', 'cxnLst');
                 let hasHierarchyConnections = false;
                 if (cxnLists.length) {
@@ -985,14 +989,10 @@
                         const type = cxn.getAttribute('type');
                         const srcId = cxn.getAttribute('srcId');
                         const destId = cxn.getAttribute('destId');
-                        
-                        // Check if both src and dest nodes exist in our nodeMap
+
                         if (!srcId || !destId || !nodeMap[srcId] || !nodeMap[destId]) continue;
-                        
-                        // Accept hierarchy connections in these cases:
-                        // 1. No type attribute (content-level parent-child in org charts)
-                        // 2. type="parOf" (explicit parent-of relationship)
-                        // Skip: type="presOf", type="presParOf" (presentation-only nodes)
+
+                        // Accept hierarchy connections: no type, or type="parOf"
                         if (type === null || type === undefined || type === 'parOf') {
                             nodeMap[srcId].children.push(nodeMap[destId]);
                             childParent[destId] = srcId;
@@ -1007,29 +1007,22 @@
                     // Use connection-based hierarchy
                     roots = Object.values(nodeMap).filter(n => !(n.id in childParent));
                 } else {
-                    // Fallback: use indent levels (if any)
-                    // Collect nodes in document order by iterating pts again
+                    // Fallback: use indent levels
                     const items = [];
                     for (const pt of pts) {
                         const modelId = pt.getAttribute('modelId');
                         if (modelId && nodeMap[modelId]) {
                             const n = nodeMap[modelId];
-                            items.push({ 
-                                text: n.text, 
-                                level: n.level !== null ? n.level : 0
-                            });
+                            items.push({ text: n.text, level: n.level !== null ? n.level : 0 });
                         }
                     }
-                    
-                    // Normalize levels: find minimum level and adjust all levels relative to it
+
                     if (items.length > 0) {
                         const minLevel = Math.min(...items.map(i => i.level));
                         const normalizedItems = items.map(i => ({
                             text: i.text,
-                            level: i.level - minLevel // Normalize so minimum level becomes 0
+                            level: i.level - minLevel
                         }));
-                        
-                        // Rebuild from level list
                         roots = buildFromLevels(normalizedItems);
                     }
                 }
