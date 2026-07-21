@@ -944,20 +944,10 @@
                 const nodeMap = {};  // modelId -> { id, text, children[] }
                 const childParent = {}; // child modelId -> parent modelId
 
-                // 1. Collect all content nodes with their text (exclude non-content nodes)
+                // 1. Collect all nodes with their text
                 for (const pt of pts) {
                     const modelId = pt.getAttribute('modelId');
                     if (!modelId) continue;
-
-                    // Skip non-content nodes (they cause duplication or have no text)
-                    // In SmartArt diagrams:
-                    // - type="doc": document-level placeholder (no actual content)
-                    // - type="parTrans": parent transition metadata
-                    // - type="sibTrans": sibling transition metadata  
-                    // - type="pres": presentation-only nodes (layout elements)
-                    // Only process nodes with NO type attribute (actual content nodes)
-                    const ptType = pt.getAttribute('type');
-                    if (ptType !== null && ptType !== undefined) continue;
 
                     // gather text from all <t> descendants
                     const tNodes = [];
@@ -983,27 +973,18 @@
 
                 if (Object.keys(nodeMap).length === 0) return null;
 
-                // 2. Extract hierarchy connections
-                // For SmartArt diagrams, hierarchy can be defined in two ways:
-                // a) Explicit type="parOf" connections (presentation layer)
-                // b) Regular connections without type attribute (content layer) - these use srcId->destId for parent->child
+                // 2. Extract parent-of connections (type="parOf")
                 const cxnLists = dataModel.getElementsByTagNameNS('*', 'cxnLst');
                 let hasHierarchyConnections = false;
                 if (cxnLists.length) {
                     const cxns = cxnLists[0].getElementsByTagNameNS('*', 'cxn');
                     for (const cxn of cxns) {
                         const type = cxn.getAttribute('type');
+                        if (type !== 'parOf') continue;   // only direct parent-child
+
                         const srcId = cxn.getAttribute('srcId');
                         const destId = cxn.getAttribute('destId');
-                        
-                        // Check if both src and dest nodes exist in our nodeMap
-                        if (!srcId || !destId || !nodeMap[srcId] || !nodeMap[destId]) continue;
-                        
-                        // Accept hierarchy connections in these cases:
-                        // 1. No type attribute (content-level parent-child in org charts)
-                        // 2. type="parOf" (explicit parent-of relationship)
-                        // Skip: type="presOf", type="presParOf" (presentation-only nodes)
-                        if (type === null || type === undefined || type === 'parOf') {
+                        if (srcId && destId && nodeMap[srcId] && nodeMap[destId]) {
                             nodeMap[srcId].children.push(nodeMap[destId]);
                             childParent[destId] = srcId;
                             hasHierarchyConnections = true;
