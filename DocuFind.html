@@ -944,10 +944,14 @@
                 const nodeMap = {};  // modelId -> { id, text, children[] }
                 const childParent = {}; // child modelId -> parent modelId
 
-                // 1. Collect all nodes with their text
+                // 1. Collect all content nodes with their text (exclude presentation-only nodes)
                 for (const pt of pts) {
                     const modelId = pt.getAttribute('modelId');
                     if (!modelId) continue;
+
+                    // Skip presentation-only nodes (they cause duplication)
+                    const ptType = pt.getAttribute('type');
+                    if (ptType === 'pres') continue;
 
                     // gather text from all <t> descendants
                     const tNodes = [];
