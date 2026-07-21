@@ -4,15 +4,16 @@ A desktop document search and viewing application built with Python and web tech
 
 ## Overview
 
-DocuFind is a lightweight desktop application that provides a native window interface for document searching and viewing. It combines the power of web technologies (HTML, JavaScript) with Python's desktop GUI capabilities using `webview`.
+DocuFind is a lightweight desktop application that provides a native window interface for document searching and viewing for .docx, .pdf and .xlsx file formats. It combines the power of web technologies (HTML, JavaScript) with Python's desktop GUI capabilities using `webview`.
 
 ## Features
 
 - Native desktop window interface
 - Local HTTP server for serving the web interface
-- Document search functionality
-- Support for multiple document formats (via included libraries)
+- Document search functionality for both names and file contents
+- Support for multiple document formats (.docx, .pdf and .xlsx)
 - Cross-platform compatibility
+- Native support for RTL (Persian / Arabic) file name and contents
 
 ## Technology Stack
 
@@ -80,7 +81,7 @@ To create a standalone executable using PyInstaller:
 
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --windowed --add-data "DocuFind.html:." --add-data "fonts:fonts" --add-data "*.js:." --add-data "icon.ico:." DocuFind.py
+pyinstaller --noconsole --icon=icon.ico --onefile --add-data "DocuFind.html;." --add-data "icon.ico;." --add-data "jszip.min.js;." --add-data "mammoth.browser.min.js;." --add-data "tailwind.js;." --add-data "xlsx.full.min.js;." --add-data "fonts;fonts" DocuFind.py
 ```
 
 This will create a distributable executable in the `dist` folder.
