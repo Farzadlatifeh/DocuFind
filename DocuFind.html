@@ -973,18 +973,27 @@
 
                 if (Object.keys(nodeMap).length === 0) return null;
 
-                // 2. Extract parent-of connections (type="parOf")
+                // 2. Extract hierarchy connections
+                // For SmartArt diagrams, hierarchy can be defined in two ways:
+                // a) Explicit type="parOf" connections (presentation layer)
+                // b) Regular connections without type attribute (content layer) - these use srcId->destId for parent->child
                 const cxnLists = dataModel.getElementsByTagNameNS('*', 'cxnLst');
                 let hasHierarchyConnections = false;
                 if (cxnLists.length) {
                     const cxns = cxnLists[0].getElementsByTagNameNS('*', 'cxn');
                     for (const cxn of cxns) {
                         const type = cxn.getAttribute('type');
-                        if (type !== 'parOf') continue;   // only direct parent-child
-
                         const srcId = cxn.getAttribute('srcId');
                         const destId = cxn.getAttribute('destId');
-                        if (srcId && destId && nodeMap[srcId] && nodeMap[destId]) {
+                        
+                        // Check if both src and dest nodes exist in our nodeMap
+                        if (!srcId || !destId || !nodeMap[srcId] || !nodeMap[destId]) continue;
+                        
+                        // Accept hierarchy connections in these cases:
+                        // 1. No type attribute (content-level parent-child in org charts)
+                        // 2. type="parOf" (explicit parent-of relationship)
+                        // Skip: type="presOf", type="presParOf" (presentation-only nodes)
+                        if (type === null || type === undefined || type === 'parOf') {
                             nodeMap[srcId].children.push(nodeMap[destId]);
                             childParent[destId] = srcId;
                             hasHierarchyConnections = true;
