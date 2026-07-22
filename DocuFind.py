@@ -48,8 +48,13 @@ def main():
     print(f" Opening {url} in a web view window.")
 
     # Create and show a native web view window
-    webview.create_window("DocuFind", url)
-    webview.start(private_mode=False)
+    webview.create_window(
+        "DocuFind",
+        url,
+        text_select=True,
+        zoomable=True
+    )
+    webview.start(private_mode=True)
 
     print(" Window closed. Server will stop when program exits.")
 
